@@ -1,6 +1,5 @@
 
-
-import { LearningMeta, StyleDNAProfile, KnowledgeRecord } from './types/learning.ts';
+import type { LearningMeta, StyleDNAProfile, KnowledgeRecord } from './types/learning';
 
 export { LearningMeta, StyleDNAProfile, KnowledgeRecord };
 
@@ -123,6 +122,7 @@ export interface NoteEvent {
   tickOffset?: number; // V102.5: Micro-timing offset (-15 to +15 ticks)
   timingOffset?: number; 
   offbeat?: boolean;
+  pitchBend?: number; // V116: Micro-tonal bend value (-8192 to 8191)
 }
 
 export enum MusicalKey {
