@@ -1,20 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
-// תיקון: הסרת סיומות הקבצים כדי ש-Vite ו-Vercel יזהו אותם כראוי
+// תיקון ייבואים: בלי סיומות קבצים כדי למנוע בעיות ב-Vercel
 import { GrooveObject, GenerationParams, MusicGenre, MusicalKey, ScaleType, EnergyMode, BpmMode, ChannelKey } from './types';
-import { SUPPORTED_CHANNELS, ELITE_16_CHANNELS } from './services/maestroService';
+import { SUPPORTED_CHANNELS } from './services/maestroService';
 import { StudioPage } from './components/StudioPage';
 import WelcomeScreen from './components/WelcomeScreen';
 import { JobsCenterPage } from './components/JobsCenterPage';
 import { Navigation } from './components/Navigation';
 import { jobQueueService } from './services/jobQueueService';
 import ChannelSelector from './components/ChannelSelector';
-import { Zap, Lock } from 'lucide-react';
+import { Zap, Lock, AlertTriangle } from 'lucide-react';
 import { neuralMonitorService } from './services/neuralMonitorService';
 import { NeuralTrainer } from './components/NeuralTrainer';
 import { SingleChannelGenerator } from './components/SingleChannelGenerator';
 import { AudioLab } from './components/AudioLab';
 
-// Fixed BPM Standards per Genre
+// משיכת ה-API Key מתוך משתני הסביבה של Vite
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+
 const GENRE_BPM_MAP: Record<MusicGenre, number> = {
     [MusicGenre.PSYTRANCE_FULLON]: 145,
     [MusicGenre.PSYTRANCE_POWER]: 142,
@@ -25,20 +27,13 @@ const GENRE_BPM_MAP: Record<MusicGenre, number> = {
 
 type ViewType = 'WELCOME' | 'CREATE' | 'STUDIO' | 'AUDIO_LAB' | 'GENERATOR' | 'TRAINER' | 'JOBS';
 
-const NAV_ORDER: ViewType[] = [
-    'WELCOME', 
-    'CREATE', 
-    'STUDIO', 
-    'AUDIO_LAB', 
-    'GENERATOR', 
-    'TRAINER', 
-    'JOBS'
-];
+const NAV_ORDER: ViewType[] = ['WELCOME', 'CREATE', 'STUDIO', 'AUDIO_LAB', 'GENERATOR', 'TRAINER', 'JOBS'];
 
 export default function App() {
   const [view, setView] = useState<ViewType>('WELCOME');
   const [groove, setGroove] = useState<GrooveObject | null>(null);
   const [selectedChannels, setSelectedChannels] = useState<ChannelKey[]>(SUPPORTED_CHANNELS);
+  const [apiKeyMissing, setApiKeyMissing] = useState(false);
   
   const touchStart = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
@@ -57,7 +52,13 @@ export default function App() {
     bpmMode: BpmMode.MANUAL
   });
 
+  // בדיקת API Key בטעינה הראשונה
   useEffect(() => {
+    if (!GEMINI_API_KEY) {
+      console.error("FATAL: VITE_GEMINI_API_KEY is not defined in Environment Variables");
+      setApiKeyMissing(true);
+    }
+    
     const unsub = jobQueueService.subscribe(() => {});
     return () => unsub();
   }, []);
@@ -68,6 +69,7 @@ export default function App() {
     }
   }, [groove, view]);
 
+  // לוגיקת Swipe (נשארת ללא שינוי)
   const onTouchStart = (e: React.TouchEvent) => {
     if ((e.target as HTMLElement).closest('[data-no-swipe="true"]')) {
         touchStart.current = null;
@@ -86,31 +88,14 @@ export default function App() {
 
   const onTouchEnd = () => {
     if (!touchStart.current || !touchEnd.current || !touchStartY.current || !touchEndY.current) return;
-    
     const deltaX = touchStart.current - touchEnd.current;
     const deltaY = touchStartY.current - touchEndY.current;
-
-    const isMainlyHorizontal = Math.abs(deltaX) > Math.abs(deltaY) * 2;
-    const isLongEnough = Math.abs(deltaX) > minSwipeDistance;
-
-    if (isLongEnough && isMainlyHorizontal) {
-        const isLeftSwipe = deltaX > 0;
-        const isRightSwipe = deltaX < 0;
-
+    if (Math.abs(deltaX) > Math.abs(deltaY) * 2 && Math.abs(deltaX) > minSwipeDistance) {
         const currentIndex = NAV_ORDER.indexOf(view);
-        if (currentIndex === -1) return;
-        
-        if (isLeftSwipe && currentIndex < NAV_ORDER.length - 1) {
-            setView(NAV_ORDER[currentIndex + 1]);
-        } else if (isRightSwipe && currentIndex > 0) {
-            setView(NAV_ORDER[currentIndex - 1]);
-        }
+        if (deltaX > 0 && currentIndex < NAV_ORDER.length - 1) setView(NAV_ORDER[currentIndex + 1]);
+        else if (deltaX < 0 && currentIndex > 0) setView(NAV_ORDER[currentIndex - 1]);
     }
-    
-    touchStart.current = null;
-    touchEnd.current = null;
-    touchStartY.current = null;
-    touchEndY.current = null;
+    touchStart.current = null; touchEnd.current = null;
   };
 
   const handleOpenProjectInReview = (g: GrooveObject) => {
@@ -119,12 +104,26 @@ export default function App() {
   };
 
   const handleGenreChange = (newGenre: MusicGenre) => {
-      setParams({
-          ...params,
-          genre: newGenre,
-          bpm: GENRE_BPM_MAP[newGenre] || 140
-      });
+      setParams({ ...params, genre: newGenre, bpm: GENRE_BPM_MAP[newGenre] || 140 });
   };
+
+  // מסך הגנה במידה וחסר API Key
+  if (apiKeyMissing) {
+    return (
+      <div className="h-screen w-full bg-black text-white flex flex-col items-center justify-center p-6 text-center font-mono">
+        <div className="border border-red-500/50 p-8 bg-red-950/20 rounded-3xl max-w-md space-y-4">
+          <AlertTriangle size={48} className="text-red-500 mx-auto" />
+          <h1 className="text-2xl font-bold uppercase tracking-tighter">API Configuration Error</h1>
+          <p className="text-gray-400 text-sm">
+            VITE_GEMINI_API_KEY is missing. The Neural Engine cannot manifest without a connection.
+          </p>
+          <div className="text-[10px] text-zinc-600 bg-black p-3 rounded-lg border border-white/5">
+            GOTO: Vercel Settings > Environment Variables > Add VITE_GEMINI_API_KEY
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div 
@@ -149,13 +148,9 @@ export default function App() {
         )}
         
         {view === 'STUDIO' && <StudioPage initialGroove={groove} onUpdate={setGroove} onClose={() => setView('JOBS')} />}
-        
         {view === 'JOBS' && <JobsCenterPage onOpenGroove={handleOpenProjectInReview} onClose={() => setView('WELCOME')} />}
-        
         {view === 'TRAINER' && <NeuralTrainer onClose={() => setView('WELCOME')} />}
-        
         {view === 'GENERATOR' && <SingleChannelGenerator onClose={() => setView('WELCOME')} />}
-        
         {view === 'AUDIO_LAB' && <AudioLab onClose={() => setView('WELCOME')} />}
 
         {view === 'CREATE' && (
