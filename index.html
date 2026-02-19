@@ -8,54 +8,24 @@
   <script src="https://cdn.tailwindcss.com"></script>
 
   <style>
-    /* עיצוב בסיסי למניעת קפיצות ויזואליות */
-    body {
-      background-color: black;
-      margin: 0;
-      color: white;
-      font-family: system-ui, -apple-system, sans-serif;
-    }
-
-    /* Loader Style */
+    body { background-color: black; margin: 0; color: white; }
     #engine-loader {
-      position: fixed;
-      inset: 0;
-      background: black;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      z-index: 9999;
-      color: #00ff00;
-      font-family: monospace;
-      gap: 1rem;
+      position: fixed; inset: 0; background: black;
+      display: flex; flex-direction: column; justify-content: center;
+      align-items: center; z-index: 9999; color: #00ff00; font-family: monospace;
     }
-
     .spinner {
-      width: 40px;
-      height: 40px;
-      border: 3px solid rgba(0, 255, 0, 0.1);
-      border-radius: 50%;
-      border-top-color: #00ff00;
-      animation: spin 1s ease-in-out infinite;
+      width: 40px; height: 40px; border: 3px solid rgba(0, 255, 0, 0.1);
+      border-radius: 50%; border-top-color: #00ff00; animation: spin 1s linear infinite;
     }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    /* Fadr-style Scrollbar */
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: #000; }
-    ::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
-    ::-webkit-scrollbar-thumb:hover { background: #555; }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
-<body class="bg-black text-white m-0 overflow-hidden h-screen antialiased selection:bg-fuchsia-500 selection:text-white">
+<body class="bg-black antialiased">
   
   <div id="engine-loader">
     <div class="spinner"></div>
-    <div id="loader-text">BOOTING MIDI AI ENGINE...</div>
+    <div style="margin-top: 20px;">INITIALIZING NEURAL ENGINE...</div>
   </div>
 
   <div id="root"></div>
